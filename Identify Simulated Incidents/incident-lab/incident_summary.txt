@@ -1,0 +1,38 @@
+INCIDENT SUMMARY REPORT
+=======================
+
+1. DOWNTIME PATTERNS IDENTIFIED:
+   - Database connectivity failure (09:00-09:30)
+   - Application crash due to memory (10:30)
+   - Total downtime: ~45 minutes
+
+2. PERFORMANCE ISSUES DETECTED:
+   - Response time degradation (09:45-10:15)
+   - High memory usage leading to crash
+   - Slow API responses (>5s)
+
+3. SEVERITY CATEGORIZATION:
+   CRITICAL (3 incidents):
+   - Service unavailable at 09:15
+   - Application crash at 10:30
+   - Memory exhaustion at 10:30
+   
+   HIGH (5 incidents):
+   - Database timeouts
+   - Multiple 5xx errors
+   
+   MEDIUM (4 incidents):
+   - Performance degradation
+   - High resource usage warnings
+
+4. ROOT CAUSES:
+   - Database connection pool exhaustion
+   - Memory leak in DataProcessor module
+   - Insufficient resource allocation
+
+5. PROPOSED MITIGATIONS:
+   - Increase database connection pool size
+   - Fix memory leak in DataProcessor
+   - Add memory monitoring alerts
+   - Implement circuit breaker pattern
+   - Scale application resources
