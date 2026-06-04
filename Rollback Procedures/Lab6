@@ -1,0 +1,346 @@
+Rollback Procedures
+Prerequisites
+Basic Linux command line knowledge
+Understanding of application deployment concepts
+Familiarity with Git version control
+Basic knowledge of web servers (Nginx or Apache)
+Comfortable editing files with vi/vim or nano
+Learning Objectives
+By the end of this lab, you will be able to:
+
+Implement rollback strategies for application deployments
+Simulate deployment failures in a controlled environment
+Execute rollback procedures to restore previous working versions
+Verify application state before and after rollback operations
+Environment Setup
+Initial System Preparation
+Update package manager and install required tools:
+sudo apt update
+sudo apt install -y git nginx curl
+Create project directory structure:
+mkdir -p ~/deployment-lab/{app,backups,scripts}
+cd ~/deployment-lab
+Initialize Git repository for version control:
+git config --global user.name "Lab User"
+git config --global user.email "lab@example.com"
+Task 1: Setup Application with Versioning
+Step 1: Create Initial Application Version
+Create a simple web application (v1.0):
+
+cd ~/deployment-lab/app
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>App Version 1.0</title></head>
+<body>
+    <h1>Application Version 1.0</h1>
+    <p>Status: Stable Release</p>
+    <p>Build: 2024-01-15</p>
+</body>
+</html>
+EOF
+Step 2: Initialize Git Repository
+git init
+git add index.html
+git commit -m "Release v1.0 - Initial stable version"
+git tag -a v1.0 -m "Version 1.0 - Stable"
+Step 3: Create Deployment Script Template
+Create a deployment script with rollback capability:
+
+cd ~/deployment-lab/scripts
+cat > deploy.sh << 'EOF'
+#!/bin/bash
+
+# Deployment script with rollback support
+# TODO: Complete the deployment logic
+
+VERSION=$1
+DEPLOY_DIR="/var/www/html"
+BACKUP_DIR="$HOME/deployment-lab/backups"
+APP_DIR="$HOME/deployment-lab/app"
+
+deploy() {
+    local version=$1
+    echo "Deploying version: $version"
+    
+    # TODO: Implement backup of current deployment
+    # Hint: Use timestamp for backup naming
+    
+    # TODO: Implement deployment from Git tag
+    # Hint: Use git checkout to switch versions
+    
+    # TODO: Copy files to web server directory
+    
+    # TODO: Restart web server
+}
+
+# TODO: Implement function signature
+rollback() {
+    # TODO: List available backups
+    # TODO: Restore from most recent backup
+    # TODO: Restart web server
+    pass
+}
+
+verify_deployment() {
+    # TODO: Check if web server is running
+    # TODO: Test HTTP response
+    # TODO: Display current version
+    pass
+}
+
+case "$1" in
+    deploy)
+        deploy "$2"
+        ;;
+    rollback)
+        rollback
+        ;;
+    verify)
+        verify_deployment
+        ;;
+    *)
+        echo "Usage: $0 {deploy|rollback|verify} [version]"
+        exit 1
+esac
+EOF
+
+chmod +x deploy.sh
+Step 4: Complete the Deployment Function
+Edit deploy.sh and implement the deployment logic:
+
+# Add after the deploy() function declaration:
+
+    # Create backup with timestamp
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_NAME="backup_${TIMESTAMP}"
+    
+    if [ -d "$DEPLOY_DIR" ]; then
+        sudo mkdir -p "$BACKUP_DIR"
+        sudo cp -r "$DEPLOY_DIR" "$BACKUP_DIR/$BACKUP_NAME"
+        echo "Backup created: $BACKUP_NAME"
+    fi
+    
+    # Checkout specified version
+    cd "$APP_DIR"
+    git checkout "$version"
+    
+    # Deploy to web server
+    sudo cp -r * "$DEPLOY_DIR/"
+    sudo systemctl restart nginx
+    
+    echo "Deployment completed for $version"
+Step 5: Configure Nginx
+sudo systemctl start nginx
+sudo systemctl enable nginx
+
+# Verify Nginx is running
+sudo systemctl status nginx
+Step 6: Deploy Initial Version
+cd ~/deployment-lab/scripts
+./deploy.sh deploy v1.0
+Verify deployment:
+
+curl http://localhost
+Expected output should show "Application Version 1.0"
+
+Task 2: Simulate Failure and Execute Rollback
+Step 1: Create a Problematic Version
+Create version 2.0 with intentional issues:
+
+cd ~/deployment-lab/app
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>App Version 2.0</title></head>
+<body>
+    <h1>Application Version 2.0</h1>
+    <p>Status: BROKEN - Database connection failed</p>
+    <p>Build: 2024-01-20</p>
+    <script>
+        // Simulated error
+        console.error("Critical error: Cannot connect to database");
+    </script>
+</body>
+</html>
+EOF
+
+git add index.html
+git commit -m "Release v2.0 - Contains critical bug"
+git tag -a v2.0 -m "Version 2.0 - Broken release"
+Step 2: Deploy Broken Version
+cd ~/deployment-lab/scripts
+./deploy.sh deploy v2.0
+Verify the broken deployment:
+
+curl http://localhost
+You should see the broken version with error messages.
+
+Step 3: Implement Rollback Function
+Complete the rollback function in deploy.sh:
+
+rollback() {
+    echo "Initiating rollback procedure..."
+    
+    # Find most recent backup
+    LATEST_BACKUP=$(ls -t "$BACKUP_DIR" | head -1)
+    
+    if [ -z "$LATEST_BACKUP" ]; then
+        echo "Error: No backups found"
+        exit 1
+    fi
+    
+    echo "Rolling back to: $LATEST_BACKUP"
+    
+    # TODO: Remove current deployment
+    # Hint: sudo rm -rf "$DEPLOY_DIR"/*
+    
+    # TODO: Restore from backup
+    # Hint: sudo cp -r "$BACKUP_DIR/$LATEST_BACKUP"/* "$DEPLOY_DIR"/
+    
+    # TODO: Restart nginx
+    # Hint: sudo systemctl restart nginx
+    
+    echo "Rollback completed successfully"
+}
+Complete implementation:
+
+    sudo rm -rf "$DEPLOY_DIR"/*
+    sudo cp -r "$BACKUP_DIR/$LATEST_BACKUP"/* "$DEPLOY_DIR"/
+    sudo systemctl restart nginx
+Step 4: Implement Verification Function
+Add verification logic:
+
+verify_deployment() {
+    echo "Verifying deployment..."
+    
+    # Check Nginx status
+    if sudo systemctl is-active --quiet nginx; then
+        echo "✓ Nginx is running"
+    else
+        echo "✗ Nginx is not running"
+        return 1
+    fi
+    
+    # Test HTTP response
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✓ HTTP response: $HTTP_CODE"
+    else
+        echo "✗ HTTP response: $HTTP_CODE"
+        return 1
+    fi
+    
+    # Display current version
+    echo ""
+    echo "Current deployed version:"
+    curl -s http://localhost | grep -o "Version [0-9.]*"
+}
+Step 5: Execute Rollback
+Perform the rollback operation:
+
+cd ~/deployment-lab/scripts
+./deploy.sh rollback
+Step 6: Verify Rollback Success
+./deploy.sh verify
+Check the application in browser or via curl:
+
+curl http://localhost
+Expected output should show "Application Version 1.0" (the stable version).
+
+Step 7: Create Rollback Log
+Implement logging for audit trail:
+
+cat > ~/deployment-lab/scripts/log_rollback.sh << 'EOF'
+#!/bin/bash
+
+LOG_FILE="$HOME/deployment-lab/rollback.log"
+
+log_event() {
+    local event_type=$1
+    local message=$2
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # TODO: Append log entry with timestamp, event type, and message
+    # Format: [TIMESTAMP] EVENT_TYPE: MESSAGE
+    
+    echo "[$timestamp] $event_type: $message" >> "$LOG_FILE"
+}
+
+# Usage example
+log_event "ROLLBACK" "Rolled back from v2.0 to v1.0"
+log_event "VERIFY" "Deployment verification successful"
+
+# Display recent logs
+echo "Recent rollback events:"
+tail -n 5 "$LOG_FILE"
+EOF
+
+chmod +x log_rollback.sh
+./log_rollback.sh
+Verification
+Complete Verification Checklist
+Check backup directory:
+ls -lh ~/deployment-lab/backups/
+You should see at least one backup directory.
+
+Verify Git tags:
+cd ~/deployment-lab/app
+git tag
+Should show v1.0 and v2.0.
+
+Test deployment script:
+cd ~/deployment-lab/scripts
+./deploy.sh verify
+All checks should pass with ✓ marks.
+
+Verify web server response:
+curl -I http://localhost
+Should return HTTP 200 OK.
+
+Check rollback logs:
+cat ~/deployment-lab/rollback.log
+Should contain rollback event entries.
+
+Test complete cycle:
+# Deploy v2.0 again
+./deploy.sh deploy v2.0
+curl http://localhost | grep "Version 2.0"
+
+# Rollback
+./deploy.sh rollback
+curl http://localhost | grep "Version 1.0"
+Troubleshooting
+Issue: Nginx fails to start
+
+Solution: Check configuration with sudo nginx -t
+Verify port 80 is not in use: sudo netstat -tlnp | grep :80
+Issue: Permission denied errors
+
+Solution: Ensure scripts have execute permissions: chmod +x script.sh
+Check sudo access for deployment operations
+Issue: Backup directory not found
+
+Solution: Verify path in script matches actual directory
+Create manually: mkdir -p ~/deployment-lab/backups
+Issue: Git checkout fails
+
+Solution: Ensure you're in the correct directory
+Check available tags: git tag -l
+Conclusion
+You have successfully implemented a rollback procedure system that includes:
+
+Version-controlled application deployments using Git tags
+Automated backup creation before deployments
+Rollback capability to restore previous working versions
+Verification procedures to confirm deployment status
+Audit logging for tracking rollback events
+These skills are critical for production environments where deployment failures must be quickly remediated. Rollback procedures minimize downtime and provide a safety net for deployment operations. In real-world scenarios, you would extend this with additional features like database rollbacks, configuration management, and automated health checks.
+
+Key Takeaways:
+
+Always create backups before deployments
+Use version control tags for release management
+Implement verification steps to detect failures quickly
+Maintain audit logs for compliance and troubleshooting
+Test rollback procedures regularly in non-production 
