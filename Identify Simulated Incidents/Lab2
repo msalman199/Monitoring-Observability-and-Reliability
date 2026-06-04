@@ -1,0 +1,521 @@
+Identify Simulated Incidents
+Prerequisites
+Basic Linux command line knowledge (cd, ls, cat, grep)
+Understanding of text file navigation
+Familiarity with log file concepts
+Access to a Linux machine with sudo privileges
+Learning Objectives
+By completing this lab, you will:
+
+Detect and classify incidents based on log patterns
+Identify downtime patterns in system logs
+Detect performance degradation issues
+Categorize incident severity levels
+Propose appropriate mitigation steps
+Environment Setup
+Install Required Tools
+# Update package manager
+sudo apt update
+
+# Install basic utilities
+sudo apt install -y vim nano grep coreutils
+
+# Create lab directory
+mkdir -p ~/incident-lab
+cd ~/incident-lab
+Task 1: Generate and Review Simulated Logs
+Step 1: Create Simulated Log Files
+Create a script to generate realistic system logs with various incident patterns.
+
+# Create log generator script
+nano generate_logs.sh
+Add the following content:
+
+#!/bin/bash
+# Log generator for incident simulation
+
+LOG_DIR="$HOME/incident-lab/logs"
+mkdir -p "$LOG_DIR"
+
+# Generate application logs with incidents
+cat > "$LOG_DIR/application.log" << 'EOF'
+2024-01-15 08:00:01 INFO Application started successfully
+2024-01-15 08:15:23 INFO User login: user123
+2024-01-15 08:30:45 WARNING High memory usage detected: 85%
+2024-01-15 08:45:12 INFO Processing request ID: 1001
+2024-01-15 09:00:00 ERROR Database connection timeout after 30s
+2024-01-15 09:00:15 ERROR Failed to process request ID: 1002
+2024-01-15 09:00:30 ERROR Database connection timeout after 30s
+2024-01-15 09:15:00 CRITICAL Service unavailable - database unreachable
+2024-01-15 09:30:00 INFO Database connection restored
+2024-01-15 09:45:22 WARNING Response time degraded: 5.2s (threshold: 2s)
+2024-01-15 10:00:01 WARNING Response time degraded: 6.8s (threshold: 2s)
+2024-01-15 10:15:33 ERROR Out of memory exception in module: DataProcessor
+2024-01-15 10:30:00 CRITICAL Application crashed - insufficient memory
+2024-01-15 10:45:00 INFO Application restarted by watchdog
+2024-01-15 11:00:12 INFO Normal operations resumed
+2024-01-15 11:30:45 WARNING Disk usage at 92%
+2024-01-15 12:00:00 INFO Scheduled backup completed
+EOF
+
+# Generate web server logs
+cat > "$LOG_DIR/webserver.log" << 'EOF'
+2024-01-15 08:00:05 200 GET /index.html 0.05s
+2024-01-15 08:15:10 200 GET /api/users 0.12s
+2024-01-15 08:30:22 200 POST /api/login 0.08s
+2024-01-15 08:45:33 500 GET /api/data 15.2s
+2024-01-15 09:00:01 503 GET /api/data 30.0s
+2024-01-15 09:00:10 503 POST /api/submit 30.0s
+2024-01-15 09:00:25 503 GET /health 30.0s
+2024-01-15 09:15:00 503 GET /api/status 30.0s
+2024-01-15 09:30:15 200 GET /health 0.05s
+2024-01-15 09:45:30 200 GET /api/data 4.5s
+2024-01-15 10:00:05 200 GET /api/users 5.8s
+2024-01-15 10:15:20 500 POST /api/process 8.2s
+2024-01-15 10:30:00 503 GET /api/data 0.0s
+2024-01-15 10:45:30 200 GET /health 0.06s
+2024-01-15 11:00:00 200 GET /api/data 0.15s
+EOF
+
+# Generate system metrics log
+cat > "$LOG_DIR/metrics.log" << 'EOF'
+2024-01-15 08:00:00 CPU:45% MEM:60% DISK:75% NET:120Mbps
+2024-01-15 08:30:00 CPU:52% MEM:68% DISK:75% NET:145Mbps
+2024-01-15 09:00:00 CPU:88% MEM:85% DISK:76% NET:95Mbps
+2024-01-15 09:30:00 CPU:55% MEM:72% DISK:76% NET:130Mbps
+2024-01-15 10:00:00 CPU:78% MEM:92% DISK:77% NET:110Mbps
+2024-01-15 10:30:00 CPU:95% MEM:98% DISK:77% NET:50Mbps
+2024-01-15 11:00:00 CPU:48% MEM:65% DISK:78% NET:125Mbps
+2024-01-15 11:30:00 CPU:50% MEM:70% DISK:92% NET:140Mbps
+EOF
+
+echo "Log files generated successfully in $LOG_DIR"
+Save and exit (Ctrl+X, Y, Enter), then execute:
+
+chmod +x generate_logs.sh
+./generate_logs.sh
+Step 2: Review Log Structure
+Examine each log file to understand the format:
+
+# View application logs
+echo "=== Application Logs ==="
+cat logs/application.log
+
+# View web server logs
+echo -e "\n=== Web Server Logs ==="
+cat logs/webserver.log
+
+# View metrics logs
+echo -e "\n=== System Metrics ==="
+cat logs/metrics.log
+Task 2: Identify and Classify Incidents
+Step 1: Create Incident Analysis Script
+Create a Python script to analyze logs and identify incidents:
+
+nano analyze_incidents.py
+Add the following template:
+
+#!/usr/bin/env python3
+"""
+Incident Analysis Tool
+Analyzes log files to detect and classify incidents
+"""
+
+import re
+from datetime import datetime
+from collections import defaultdict
+
+class IncidentAnalyzer:
+    def __init__(self, log_dir):
+        self.log_dir = log_dir
+        self.incidents = []
+        
+    def analyze_application_logs(self, log_file):
+        """
+        Analyze application logs for errors and critical issues
+        
+        Args:
+            log_file: Path to application log file
+        """
+        print(f"\n[*] Analyzing {log_file}...")
+        
+        # TODO: Read the log file
+        # TODO: Parse each line for timestamp, level, and message
+        # TODO: Identify ERROR and CRITICAL entries
+        # TODO: Group consecutive errors as single incident
+        
+        with open(log_file, 'r') as f:
+            for line in f:
+                # Parse log line
+                parts = line.strip().split(' ', 3)
+                if len(parts) >= 4:
+                    date, time, level, message = parts
+                    timestamp = f"{date} {time}"
+                    
+                    # Detect incidents based on severity
+                    if level in ['ERROR', 'CRITICAL']:
+                        # TODO: Add incident to list with details
+                        pass
+    
+    def analyze_webserver_logs(self, log_file):
+        """
+        Analyze web server logs for downtime and performance issues
+        
+        Args:
+            log_file: Path to web server log file
+        """
+        print(f"\n[*] Analyzing {log_file}...")
+        
+        # TODO: Read the log file
+        # TODO: Identify 5xx status codes (downtime)
+        # TODO: Identify slow response times (>2s)
+        # TODO: Count consecutive failures
+        
+        pass
+    
+    def analyze_metrics(self, log_file):
+        """
+        Analyze system metrics for resource exhaustion
+        
+        Args:
+            log_file: Path to metrics log file
+        """
+        print(f"\n[*] Analyzing {log_file}...")
+        
+        # TODO: Read metrics log
+        # TODO: Identify high CPU usage (>80%)
+        # TODO: Identify high memory usage (>90%)
+        # TODO: Identify high disk usage (>90%)
+        
+        pass
+    
+    def categorize_severity(self, incident_type, details):
+        """
+        Categorize incident severity based on type and impact
+        
+        Args:
+            incident_type: Type of incident
+            details: Additional incident details
+            
+        Returns:
+            Severity level: LOW, MEDIUM, HIGH, CRITICAL
+        """
+        # TODO: Implement severity categorization logic
+        # CRITICAL: Service unavailable, application crash
+        # HIGH: Multiple errors, resource exhaustion
+        # MEDIUM: Performance degradation, warnings
+        # LOW: Single errors, minor issues
+        
+        pass
+    
+    def propose_mitigation(self, incident):
+        """
+        Propose mitigation steps for identified incident
+        
+        Args:
+            incident: Dictionary containing incident details
+            
+        Returns:
+            List of mitigation steps
+        """
+        # TODO: Based on incident type, suggest mitigation
+        # Database issues: Check connection pool, restart service
+        # Memory issues: Increase memory, check for leaks
+        # Performance: Scale resources, optimize queries
+        
+        pass
+    
+    def generate_report(self):
+        """
+        Generate incident report with findings
+        """
+        print("\n" + "="*60)
+        print("INCIDENT ANALYSIS REPORT")
+        print("="*60)
+        
+        # TODO: Print summary of all incidents
+        # TODO: Group by severity
+        # TODO: Include mitigation recommendations
+        
+        pass
+
+# Main execution
+if __name__ == "__main__":
+    analyzer = IncidentAnalyzer("logs")
+    
+    # Analyze all log files
+    analyzer.analyze_application_logs("logs/application.log")
+    analyzer.analyze_webserver_logs("logs/webserver.log")
+    analyzer.analyze_metrics("logs/metrics.log")
+    
+    # Generate report
+    analyzer.generate_report()
+Step 2: Complete the Analysis Script
+Now implement the TODO sections. Here's a complete working version:
+
+nano incident_analyzer.py
+#!/usr/bin/env python3
+"""Complete Incident Analyzer"""
+
+import re
+from datetime import datetime
+
+def analyze_logs():
+    """Main analysis function"""
+    
+    incidents = []
+    
+    # Analyze application logs
+    print("\n[TASK 1] Analyzing Application Logs...")
+    with open('logs/application.log', 'r') as f:
+        error_count = 0
+        for line in f:
+            if 'ERROR' in line or 'CRITICAL' in line:
+                parts = line.strip().split(' ', 3)
+                timestamp = f"{parts[0]} {parts[1]}"
+                level = parts[2]
+                message = parts[3]
+                
+                severity = 'CRITICAL' if 'CRITICAL' in line else 'HIGH'
+                incidents.append({
+                    'timestamp': timestamp,
+                    'type': 'Application Error',
+                    'severity': severity,
+                    'details': message
+                })
+                error_count += 1
+        
+        print(f"  Found {error_count} application errors")
+    
+    # Analyze web server logs
+    print("\n[TASK 2] Analyzing Web Server Logs...")
+    downtime_count = 0
+    slow_response_count = 0
+    
+    with open('logs/webserver.log', 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            timestamp = f"{parts[0]} {parts[1]}"
+            status_code = parts[2]
+            response_time = float(parts[5].replace('s', ''))
+            
+            # Detect downtime (5xx errors)
+            if status_code.startswith('5'):
+                incidents.append({
+                    'timestamp': timestamp,
+                    'type': 'Service Downtime',
+                    'severity': 'CRITICAL',
+                    'details': f"HTTP {status_code} - Service unavailable"
+                })
+                downtime_count += 1
+            
+            # Detect performance issues
+            elif response_time > 2.0:
+                incidents.append({
+                    'timestamp': timestamp,
+                    'type': 'Performance Degradation',
+                    'severity': 'MEDIUM',
+                    'details': f"Slow response: {response_time}s"
+                })
+                slow_response_count += 1
+    
+    print(f"  Found {downtime_count} downtime incidents")
+    print(f"  Found {slow_response_count} performance issues")
+    
+    # Analyze metrics
+    print("\n[TASK 3] Analyzing System Metrics...")
+    resource_issues = 0
+    
+    with open('logs/metrics.log', 'r') as f:
+        for line in f:
+            parts = line.strip().split()
+            timestamp = f"{parts[0]} {parts[1]}"
+            cpu = int(parts[2].split(':')[1].replace('%', ''))
+            mem = int(parts[3].split(':')[1].replace('%', ''))
+            disk = int(parts[4].split(':')[1].replace('%', ''))
+            
+            if cpu > 80 or mem > 90 or disk > 90:
+                severity = 'CRITICAL' if mem > 95 else 'HIGH'
+                incidents.append({
+                    'timestamp': timestamp,
+                    'type': 'Resource Exhaustion',
+                    'severity': severity,
+                    'details': f"CPU:{cpu}% MEM:{mem}% DISK:{disk}%"
+                })
+                resource_issues += 1
+    
+    print(f"  Found {resource_issues} resource issues")
+    
+    return incidents
+
+def categorize_incidents(incidents):
+    """Categorize incidents by severity"""
+    categories = {'CRITICAL': [], 'HIGH': [], 'MEDIUM': [], 'LOW': []}
+    
+    for incident in incidents:
+        severity = incident['severity']
+        categories[severity].append(incident)
+    
+    return categories
+
+def propose_mitigation(incident):
+    """Suggest mitigation steps"""
+    mitigations = {
+        'Service Downtime': [
+            '1. Check database connectivity',
+            '2. Restart application service',
+            '3. Verify network connectivity',
+            '4. Review recent deployments'
+        ],
+        'Application Error': [
+            '1. Review application logs for root cause',
+            '2. Check database connection pool',
+            '3. Verify external service availability',
+            '4. Restart affected services'
+        ],
+        'Resource Exhaustion': [
+            '1. Identify resource-intensive processes',
+            '2. Scale up system resources',
+            '3. Implement resource limits',
+            '4. Check for memory leaks'
+        ],
+        'Performance Degradation': [
+            '1. Analyze slow queries',
+            '2. Review application performance metrics',
+            '3. Check system load',
+            '4. Consider caching strategies'
+        ]
+    }
+    
+    return mitigations.get(incident['type'], ['Investigate and monitor'])
+
+def generate_report(incidents):
+    """Generate incident report"""
+    print("\n" + "="*70)
+    print("INCIDENT ANALYSIS REPORT")
+    print("="*70)
+    
+    categories = categorize_incidents(incidents)
+    
+    print(f"\nTotal Incidents Found: {len(incidents)}")
+    print(f"  CRITICAL: {len(categories['CRITICAL'])}")
+    print(f"  HIGH: {len(categories['HIGH'])}")
+    print(f"  MEDIUM: {len(categories['MEDIUM'])}")
+    print(f"  LOW: {len(categories['LOW'])}")
+    
+    # Detailed incident list
+    for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']:
+        if categories[severity]:
+            print(f"\n{'='*70}")
+            print(f"{severity} SEVERITY INCIDENTS")
+            print('='*70)
+            
+            for idx, incident in enumerate(categories[severity], 1):
+                print(f"\nIncident #{idx}")
+                print(f"  Timestamp: {incident['timestamp']}")
+                print(f"  Type: {incident['type']}")
+                print(f"  Details: {incident['details']}")
+                print(f"  Mitigation Steps:")
+                for step in propose_mitigation(incident):
+                    print(f"    {step}")
+
+if __name__ == "__main__":
+    incidents = analyze_logs()
+    generate_report(incidents)
+Step 3: Run the Analysis
+# Make script executable
+chmod +x incident_analyzer.py
+
+# Run analysis
+python3 incident_analyzer.py
+Step 4: Create Incident Summary
+Create a manual summary document:
+
+nano incident_summary.txt
+Document your findings:
+
+INCIDENT SUMMARY REPORT
+=======================
+
+1. DOWNTIME PATTERNS IDENTIFIED:
+   - Database connectivity failure (09:00-09:30)
+   - Application crash due to memory (10:30)
+   - Total downtime: ~45 minutes
+
+2. PERFORMANCE ISSUES DETECTED:
+   - Response time degradation (09:45-10:15)
+   - High memory usage leading to crash
+   - Slow API responses (>5s)
+
+3. SEVERITY CATEGORIZATION:
+   CRITICAL (3 incidents):
+   - Service unavailable at 09:15
+   - Application crash at 10:30
+   - Memory exhaustion at 10:30
+   
+   HIGH (5 incidents):
+   - Database timeouts
+   - Multiple 5xx errors
+   
+   MEDIUM (4 incidents):
+   - Performance degradation
+   - High resource usage warnings
+
+4. ROOT CAUSES:
+   - Database connection pool exhaustion
+   - Memory leak in DataProcessor module
+   - Insufficient resource allocation
+
+5. PROPOSED MITIGATIONS:
+   - Increase database connection pool size
+   - Fix memory leak in DataProcessor
+   - Add memory monitoring alerts
+   - Implement circuit breaker pattern
+   - Scale application resources
+Verification
+Verify Log Analysis
+# Check all incidents were identified
+echo "Checking incident detection..."
+
+# Count critical errors
+grep -c "CRITICAL" logs/application.log
+
+# Count 5xx errors (downtime)
+grep -c "503\|500" logs/webserver.log
+
+# Check high resource usage
+grep "CPU:9[0-9]\|MEM:9[0-9]" logs/metrics.log
+Verify Categorization
+# Run your analyzer and check output
+python3 incident_analyzer.py | grep -A 5 "CRITICAL SEVERITY"
+python3 incident_analyzer.py | grep "Total Incidents"
+Expected output should show:
+
+Total incidents: 12+
+CRITICAL incidents: 3+
+HIGH incidents: 5+
+MEDIUM incidents: 4+
+Conclusion
+You have successfully:
+
+Generated realistic simulated log files with various incident patterns
+Analyzed application, web server, and system metric logs
+Identified downtime patterns including database failures and service unavailability
+Detected performance degradation through slow response times and resource exhaustion
+Categorized incidents by severity (CRITICAL, HIGH, MEDIUM, LOW)
+Proposed specific mitigation steps for each incident type
+This lab demonstrates essential incident response skills used in production environments. Understanding how to quickly identify, classify, and respond to incidents is crucial for maintaining system reliability and minimizing downtime.
+
+Troubleshooting Tips
+Issue: Script doesn't find log files
+
+Solution: Ensure you're in the ~/incident-lab directory
+Run: ls -la logs/ to verify files exist
+Issue: Python script has syntax errors
+
+Solution: Check indentation (use spaces, not tabs)
+Verify Python 3 is installed: python3 --version
+Issue: No incidents detected
+
+Solution: Verify log files contain data: cat logs/application.log
+Re-run the log generator script
