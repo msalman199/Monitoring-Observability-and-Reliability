@@ -14,3 +14,12 @@ def test_divide(self):
     self.assertEqual(divide(10, 2), 5)
     with self.assertRaises(ValueError):
         divide(10, 0)
+    def test_power(self):
+        """Test power function"""
+        # TODO: Add test cases
+        pass
+    
+    def test_modulo(self):
+        """Test modulo function"""
+        # TODO: Add test cases
+        pass
