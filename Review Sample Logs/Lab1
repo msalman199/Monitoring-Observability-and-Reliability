@@ -1,0 +1,304 @@
+Review Sample Logs
+Prerequisites
+Basic Linux command line knowledge (navigating directories, viewing files)
+Understanding of text file operations
+Access to a Linux terminal
+Learning Objectives
+By completing this lab, you will:
+
+Understand common log file formats and structures
+Identify different log severity levels (INFO, WARNING, ERROR)
+Detect anomalies and patterns in log files
+Use Linux command-line tools for log analysis
+Summarize findings from log data
+Environment Setup
+After clicking Start Lab, you'll have access to a bare-metal Linux machine. We'll install necessary tools and create sample log files.
+
+Step 1: Update System and Install Tools
+sudo apt update
+sudo apt install -y grep less vim
+Step 2: Create Working Directory
+mkdir ~/log-analysis-lab
+cd ~/log-analysis-lab
+Step 3: Create Sample Log File
+Create a realistic application log file for analysis:
+
+cat > application.log << 'EOF'
+2024-01-15 08:00:01 INFO Application started successfully
+2024-01-15 08:00:05 INFO User login: user_id=1001, username=alice
+2024-01-15 08:01:23 INFO Database connection established
+2024-01-15 08:02:45 WARNING High memory usage detected: 85%
+2024-01-15 08:03:12 INFO User login: user_id=1002, username=bob
+2024-01-15 08:05:30 ERROR Failed to connect to payment gateway: timeout
+2024-01-15 08:05:31 WARNING Retrying payment gateway connection
+2024-01-15 08:05:35 INFO Payment gateway connection restored
+2024-01-15 08:07:22 INFO User logout: user_id=1001, username=alice
+2024-01-15 08:08:45 ERROR Database query failed: table 'orders' not found
+2024-01-15 08:09:10 WARNING Disk space low: 92% used on /var
+2024-01-15 08:10:33 INFO User login: user_id=1003, username=charlie
+2024-01-15 08:12:15 ERROR Authentication service unavailable
+2024-01-15 08:12:16 ERROR Authentication service unavailable
+2024-01-15 08:12:17 ERROR Authentication service unavailable
+2024-01-15 08:12:18 ERROR Authentication service unavailable
+2024-01-15 08:13:00 WARNING Cache miss rate exceeding threshold: 45%
+2024-01-15 08:14:22 INFO Scheduled backup completed
+2024-01-15 08:15:40 INFO User logout: user_id=1002, username=bob
+2024-01-15 08:16:55 ERROR Network connection lost
+2024-01-15 08:17:10 INFO Network connection restored
+EOF
+Verify the file was created:
+
+cat application.log
+Task 1: Open and Examine the Log File
+Step 1: View the Entire Log File
+less application.log
+Instructions:
+
+Press Space to scroll down
+Press q to quit
+Observe the log format: timestamp, severity level, and message
+Step 2: Count Total Log Entries
+wc -l application.log
+Expected Output: Should show 21 lines
+
+Step 3: Understand Log Structure
+Each log entry contains:
+
+Timestamp: Date and time (YYYY-MM-DD HH:MM:SS)
+Severity Level: INFO, WARNING, or ERROR
+Message: Description of the event
+Task 2: Identify Log Severity Levels
+Step 1: Extract All INFO Messages
+grep "INFO" application.log
+Count INFO messages:
+
+grep -c "INFO" application.log
+Step 2: Extract All WARNING Messages
+grep "WARNING" application.log
+Count WARNING messages:
+
+grep -c "WARNING" application.log
+Step 3: Extract All ERROR Messages
+grep "ERROR" application.log
+Count ERROR messages:
+
+grep -c "ERROR" application.log
+Step 4: Create Summary Report
+Create a simple script to summarize log levels:
+
+cat > analyze_logs.sh << 'EOF'
+#!/bin/bash
+
+# Log Analysis Script
+LOG_FILE="application.log"
+
+echo "=== Log Analysis Summary ==="
+echo "Log file: $LOG_FILE"
+echo ""
+
+# Count each severity level
+INFO_COUNT=$(grep -c "INFO" $LOG_FILE)
+WARNING_COUNT=$(grep -c "WARNING" $LOG_FILE)
+ERROR_COUNT=$(grep -c "ERROR" $LOG_FILE)
+TOTAL_COUNT=$(wc -l < $LOG_FILE)
+
+echo "Total entries: $TOTAL_COUNT"
+echo "INFO messages: $INFO_COUNT"
+echo "WARNING messages: $WARNING_COUNT"
+echo "ERROR messages: $ERROR_COUNT"
+echo ""
+EOF
+
+chmod +x analyze_logs.sh
+./analyze_logs.sh
+Task 3: Detect Anomalies
+Step 1: Identify Repeated Errors
+Look for consecutive identical error messages (potential system failure):
+
+grep "ERROR" application.log | uniq -c
+Analysis: Notice the "Authentication service unavailable" error appears 4 times consecutively (08:12:15-08:12:18). This indicates a critical service outage.
+
+Step 2: Find Time Gaps
+Identify unusual time gaps between log entries:
+
+awk '{print $1, $2}' application.log
+Manual Analysis: Review timestamps to spot gaps larger than normal (most entries are 1-2 minutes apart).
+
+Step 3: Detect Critical Keywords
+Search for critical issues:
+
+grep -E "failed|unavailable|lost|timeout" application.log
+Step 4: Create Anomaly Detection Script
+cat > detect_anomalies.sh << 'EOF'
+#!/bin/bash
+
+# Anomaly Detection Script
+LOG_FILE="application.log"
+
+echo "=== Anomaly Detection Report ==="
+echo ""
+
+# Find repeated errors (appearing 3+ times)
+echo "1. Repeated Error Messages:"
+grep "ERROR" $LOG_FILE | sort | uniq -c | awk '$1 >= 3 {print "   Found", $1, "occurrences:", substr($0, index($0,$4))}'
+echo ""
+
+# Find critical keywords
+echo "2. Critical Issues Detected:"
+grep -i -E "failed|unavailable|lost|timeout" $LOG_FILE | while read line; do
+    echo "   - $line"
+done
+echo ""
+
+# Find high resource usage warnings
+echo "3. Resource Warnings:"
+grep -E "memory|disk|cache" $LOG_FILE | while read line; do
+    echo "   - $line"
+done
+echo ""
+EOF
+
+chmod +x detect_anomalies.sh
+./detect_anomalies.sh
+Task 4: Summarize Findings
+Step 1: Create Comprehensive Analysis Report
+cat > generate_report.sh << 'EOF'
+#!/bin/bash
+
+# Comprehensive Log Analysis Report
+LOG_FILE="application.log"
+REPORT_FILE="analysis_report.txt"
+
+{
+    echo "========================================="
+    echo "     LOG ANALYSIS REPORT"
+    echo "========================================="
+    echo "Generated: $(date)"
+    echo "Log File: $LOG_FILE"
+    echo ""
+    
+    echo "--- SUMMARY STATISTICS ---"
+    echo "Total log entries: $(wc -l < $LOG_FILE)"
+    echo "INFO messages: $(grep -c "INFO" $LOG_FILE)"
+    echo "WARNING messages: $(grep -c "WARNING" $LOG_FILE)"
+    echo "ERROR messages: $(grep -c "ERROR" $LOG_FILE)"
+    echo ""
+    
+    echo "--- CRITICAL FINDINGS ---"
+    echo ""
+    echo "1. Service Outages:"
+    grep "ERROR.*Authentication service unavailable" $LOG_FILE | head -1 | \
+        awk '{print "   Authentication service failed at", $1, $2}'
+    echo "   Duration: 4 consecutive failures (4 seconds)"
+    echo ""
+    
+    echo "2. Connection Issues:"
+    grep -E "payment gateway|Network connection lost" $LOG_FILE | while read line; do
+        echo "   - $line"
+    done
+    echo ""
+    
+    echo "3. Resource Warnings:"
+    grep -E "memory|disk" $LOG_FILE | while read line; do
+        echo "   - $line"
+    done
+    echo ""
+    
+    echo "4. Database Issues:"
+    grep "Database.*failed" $LOG_FILE | while read line; do
+        echo "   - $line"
+    done
+    echo ""
+    
+    echo "--- RECOMMENDATIONS ---"
+    echo "1. Investigate authentication service stability"
+    echo "2. Monitor disk space usage (currently at 92%)"
+    echo "3. Review database schema for missing 'orders' table"
+    echo "4. Check payment gateway timeout settings"
+    echo "5. Optimize cache configuration (45% miss rate)"
+    echo ""
+    
+    echo "========================================="
+    
+} > $REPORT_FILE
+
+cat $REPORT_FILE
+Make executable and run:
+
+chmod +x generate_report.sh
+./generate_report.sh
+Step 2: Export Error Timeline
+Create a focused view of errors over time:
+
+grep "ERROR" application.log > errors_only.log
+cat errors_only.log
+Step 3: Manual Summary Exercise
+Based on your analysis, answer these questions:
+
+What was the most critical issue?
+
+Authentication service became unavailable with 4 consecutive failures
+What resource warnings were detected?
+
+High memory usage (85%)
+Low disk space (92% used)
+High cache miss rate (45%)
+Were there any network issues?
+
+Payment gateway timeout
+Network connection lost (later restored)
+What database problems occurred?
+
+Missing 'orders' table caused query failure
+Verification
+Verify Your Work
+Run all analysis scripts and confirm outputs:
+
+echo "=== Running All Analysis Scripts ==="
+echo ""
+echo "1. Basic Summary:"
+./analyze_logs.sh
+echo ""
+echo "2. Anomaly Detection:"
+./detect_anomalies.sh
+echo ""
+echo "3. Full Report Generated:"
+ls -lh analysis_report.txt
+Expected Results Checklist
+ Created application.log with 21 entries
+ Identified 11 INFO messages
+ Identified 4 WARNING messages
+ Identified 6 ERROR messages
+ Detected repeated authentication errors
+ Found resource usage warnings
+ Generated comprehensive analysis report
+ Created error timeline file
+Troubleshooting Tips
+Issue: grep command not found
+
+Solution: Install grep: sudo apt install grep
+Issue: Permission denied when running scripts
+
+Solution: Make scripts executable: chmod +x script_name.sh
+Issue: Cannot find log file
+
+Solution: Ensure you're in the correct directory: cd ~/log-analysis-lab
+Issue: Script shows no output
+
+Solution: Verify log file exists: ls -l application.log
+Conclusion
+Congratulations! You have successfully completed the log analysis lab. You learned to:
+
+Navigate and examine log files using Linux command-line tools
+Identify and count different log severity levels (INFO, WARNING, ERROR)
+Detect anomalies such as repeated errors, service outages, and resource warnings
+Use grep, awk, and shell scripting for automated log analysis
+Generate comprehensive reports summarizing log findings
+Key Takeaways:
+
+Log files provide critical insights into application health and performance
+Different severity levels help prioritize issues (ERROR > WARNING > INFO)
+Patterns like repeated errors often indicate serious problems requiring immediate attention
+Automated scripts make log analysis faster and more consistent
+Regular log monitoring helps prevent small issues from becoming major outages
+Next Steps: Practice analyzing logs from real applications, explore advanced tools like awk, sed, and consider log aggregation solutions for production environments.
