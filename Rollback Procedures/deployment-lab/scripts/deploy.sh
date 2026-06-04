@@ -97,3 +97,28 @@ esac
     
     echo "Rollback completed successfully"
 }
+verify_deployment() {
+    echo "Verifying deployment..."
+    
+    # Check Nginx status
+    if sudo systemctl is-active --quiet nginx; then
+        echo "✓ Nginx is running"
+    else
+        echo "✗ Nginx is not running"
+        return 1
+    fi
+    
+    # Test HTTP response
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost)
+    if [ "$HTTP_CODE" = "200" ]; then
+        echo "✓ HTTP response: $HTTP_CODE"
+    else
+        echo "✗ HTTP response: $HTTP_CODE"
+        return 1
+    fi
+    
+    # Display current version
+    echo ""
+    echo "Current deployed version:"
+    curl -s http://localhost | grep -o "Version [0-9.]*"
+}
