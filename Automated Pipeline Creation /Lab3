@@ -1,0 +1,492 @@
+Automated Pipeline Creation
+Prerequisites
+Basic understanding of Git and version control
+Familiarity with Linux command line
+Basic knowledge of YAML syntax
+Understanding of software testing concepts
+GitHub account (free tier)
+Learning Objectives
+By the end of this lab, you will be able to:
+
+Configure GitHub Actions workflows for CI/CD automation
+Create automated testing pipelines
+Implement build and deployment stages
+Troubleshoot pipeline failures
+Understand CI/CD best practices
+Environment Setup
+Initial System Configuration
+Update system packages:
+sudo apt update && sudo apt upgrade -y
+Install required tools:
+sudo apt install -y git curl nodejs npm python3 python3-pip
+Configure Git:
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+Install GitHub CLI (optional but helpful):
+curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+sudo apt update
+sudo apt install gh -y
+Task 1: Create Sample Application and Repository
+Step 1: Create Project Directory
+mkdir ~/cicd-demo
+cd ~/cicd-demo
+Step 2: Initialize Git Repository
+git init
+Step 3: Create Sample Python Application
+Create a simple calculator application:
+
+cat > calculator.py << 'EOF'
+"""
+Simple calculator module for CI/CD demonstration
+"""
+
+def add(a, b):
+    """Add two numbers"""
+    # TODO: Implement addition
+    pass
+
+def subtract(a, b):
+    """Subtract b from a"""
+    # TODO: Implement subtraction
+    pass
+
+def multiply(a, b):
+    """Multiply two numbers"""
+    # TODO: Implement multiplication
+    pass
+
+def divide(a, b):
+    """Divide a by b"""
+    # TODO: Implement division with zero check
+    pass
+EOF
+Step 4: Create Test File
+cat > test_calculator.py << 'EOF'
+"""
+Unit tests for calculator module
+"""
+import unittest
+from calculator import add, subtract, multiply, divide
+
+class TestCalculator(unittest.TestCase):
+    
+    def test_add(self):
+        """Test addition function"""
+        # TODO: Add test cases for addition
+        pass
+    
+    def test_subtract(self):
+        """Test subtraction function"""
+        # TODO: Add test cases for subtraction
+        pass
+    
+    def test_multiply(self):
+        """Test multiplication function"""
+        # TODO: Add test cases for multiplication
+        pass
+    
+    def test_divide(self):
+        """Test division function"""
+        # TODO: Add test cases for division
+        # TODO: Test division by zero
+        pass
+
+if __name__ == '__main__':
+    unittest.main()
+EOF
+Step 5: Create Requirements File
+cat > requirements.txt << 'EOF'
+pytest==7.4.3
+pytest-cov==4.1.0
+EOF
+Step 6: Implement the Functions
+Complete the calculator.py implementation:
+
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+
+def multiply(a, b):
+    return a * b
+
+def divide(a, b):
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a / b
+Step 7: Implement the Tests
+Complete the test_calculator.py implementation:
+
+def test_add(self):
+    self.assertEqual(add(2, 3), 5)
+    self.assertEqual(add(-1, 1), 0)
+
+def test_subtract(self):
+    self.assertEqual(subtract(5, 3), 2)
+    self.assertEqual(subtract(0, 5), -5)
+
+def test_multiply(self):
+    self.assertEqual(multiply(3, 4), 12)
+    self.assertEqual(multiply(-2, 3), -6)
+
+def test_divide(self):
+    self.assertEqual(divide(10, 2), 5)
+    with self.assertRaises(ValueError):
+        divide(10, 0)
+Step 8: Test Locally
+pip3 install -r requirements.txt
+python3 -m pytest test_calculator.py -v
+Step 9: Create GitHub Repository
+Using GitHub CLI:
+
+gh auth login
+gh repo create cicd-demo --public --source=. --remote=origin --push
+Or manually:
+
+Go to github.com and create new repository named "cicd-demo"
+Push your code:
+git add .
+git commit -m "Initial commit: Calculator app with tests"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/cicd-demo.git
+git push -u origin main
+Task 2: Configure GitHub Actions Pipeline
+Step 1: Create Workflow Directory
+mkdir -p .github/workflows
+Step 2: Create Basic CI Workflow
+Create the workflow file:
+
+cat > .github/workflows/ci.yml << 'EOF'
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        # TODO: Add commands to install requirements
+        
+    - name: Run tests
+      run: |
+        # TODO: Add command to run pytest with coverage
+        
+    - name: Upload coverage reports
+      uses: codecov/codecov-action@v3
+      if: success()
+EOF
+Step 3: Complete the Workflow
+Fill in the TODO sections:
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        pytest test_calculator.py -v --cov=calculator --cov-report=xml
+Step 4: Create Multi-Stage Pipeline
+Create an advanced workflow:
+
+cat > .github/workflows/full-pipeline.yml << 'EOF'
+name: Full CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install linting tools
+      run: |
+        # TODO: Install pylint or flake8
+        
+    - name: Run linter
+      run: |
+        # TODO: Run linting command
+        
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        # TODO: Install requirements
+        
+    - name: Run tests
+      run: |
+        # TODO: Run pytest
+        
+  build:
+    name: Build Artifact
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Create distribution
+      run: |
+        # TODO: Create a simple tar.gz of the project
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: calculator-app
+        path: |
+          # TODO: Specify files to upload
+EOF
+Step 5: Complete Multi-Stage Pipeline
+Fill in the TODO sections:
+
+  lint:
+    - name: Install linting tools
+      run: |
+        pip install flake8
+        
+    - name: Run linter
+      run: |
+        flake8 calculator.py --max-line-length=100
+
+  test:
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        pytest test_calculator.py -v
+
+  build:
+    - name: Create distribution
+      run: |
+        tar -czf calculator-app.tar.gz calculator.py requirements.txt
+        
+    - name: Upload artifact
+      with:
+        path: calculator-app.tar.gz
+Step 6: Add README with Badge
+cat > README.md << 'EOF'
+# CI/CD Demo - Calculator Application
+
+![CI Pipeline](https://github.com/YOUR_USERNAME/cicd-demo/workflows/CI%20Pipeline/badge.svg)
+
+A simple calculator application demonstrating CI/CD with GitHub Actions.
+
+## Features
+- Basic arithmetic operations
+- Automated testing
+- Continuous Integration pipeline
+
+## Running Tests
+```bash
+pytest test_calculator.py -v
+EOF
+
+
+### Step 7: Commit and Push Workflows
+
+```bash
+git add .github/workflows/ README.md
+git commit -m "Add GitHub Actions CI/CD pipelines"
+git push origin main
+Step 8: Monitor Pipeline Execution
+Go to your GitHub repository
+Click on "Actions" tab
+Watch the workflow run in real-time
+Review logs for each step
+Step 9: Create a Feature Branch Workflow
+git checkout -b feature/advanced-operations
+
+cat > calculator.py << 'EOF'
+"""
+Enhanced calculator module
+"""
+
+def add(a, b):
+    return a + b
+
+def subtract(a, b):
+    return a - b
+
+def multiply(a, b):
+    return a * b
+
+def divide(a, b):
+    if b == 0:
+        raise ValueError("Cannot divide by zero")
+    return a / b
+
+def power(a, b):
+    """Raise a to the power of b"""
+    # TODO: Implement power function
+    pass
+
+def modulo(a, b):
+    """Return remainder of a divided by b"""
+    # TODO: Implement modulo function
+    pass
+EOF
+Complete the new functions and add tests:
+
+# Add to test_calculator.py
+cat >> test_calculator.py << 'EOF'
+
+    def test_power(self):
+        """Test power function"""
+        # TODO: Add test cases
+        pass
+    
+    def test_modulo(self):
+        """Test modulo function"""
+        # TODO: Add test cases
+        pass
+EOF
+Step 10: Test Branch Pipeline
+git add .
+git commit -m "Add power and modulo functions"
+git push origin feature/advanced-operations
+Create a pull request on GitHub and observe:
+
+Automated tests run on PR
+Status checks must pass before merge
+Code review workflow integration
+Verification
+Verify Pipeline Configuration
+Check workflow files exist:
+ls -la .github/workflows/
+Validate YAML syntax:
+# Install yamllint
+pip3 install yamllint
+
+# Validate workflows
+yamllint .github/workflows/*.yml
+Check GitHub Actions status:
+Visit: https://github.com/YOUR_USERNAME/cicd-demo/actions
+Verify all workflows show green checkmarks
+Review execution times and logs
+Test local execution (using act - optional):
+# Install act for local testing
+curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+# Run workflows locally
+act -l  # List workflows
+act push  # Simulate push event
+Verify Pipeline Features
+Automated Testing: Confirm tests run on every push
+Multi-Python Support: Check matrix builds for different Python versions
+Artifact Creation: Verify build artifacts are uploaded
+Status Badges: Ensure README badge reflects current status
+Branch Protection: Tests must pass before merging PRs
+Expected Outcomes
+Green checkmarks on all workflow runs
+Test coverage reports generated
+Build artifacts available for download
+Pipeline completes in under 5 minutes
+Failed tests prevent merging
+Troubleshooting
+Common Issues
+Workflow not triggering:
+
+Check branch names match workflow configuration
+Verify .github/workflows/ directory structure
+Ensure YAML syntax is correct
+Tests failing in pipeline but pass locally:
+
+Check Python version consistency
+Verify all dependencies in requirements.txt
+Review environment variables
+Permission errors:
+
+Check repository settings > Actions > General
+Enable read/write permissions for GITHUB_TOKEN
+Slow pipeline execution:
+
+Cache dependencies using actions/cache@v3
+Parallelize independent jobs
+Optimize test execution
+Debug Commands
+# View workflow run logs
+gh run list
+gh run view <run-id> --log
+
+# Check repository secrets
+gh secret list
+
+# Validate workflow syntax
+cat .github/workflows/ci.yml | python3 -c "import yaml, sys; yaml.safe_load(sys.stdin)"
+Conclusion
+You have successfully:
+
+Created a complete CI/CD pipeline using GitHub Actions
+Implemented automated testing and code quality checks
+Configured multi-stage workflows with dependencies
+Set up matrix builds for multiple Python versions
+Created build artifacts and deployment preparation
+Integrated status badges and branch protection
+Key Takeaways
+Automation: CI/CD pipelines eliminate manual testing and deployment steps
+Quality Assurance: Automated tests catch bugs before production
+Consistency: Every code change goes through the same validation process
+Collaboration: Pull request checks ensure code quality standards
+Visibility: Status badges and logs provide transparency
+Next Steps
+Add deployment stages (CD) to staging/production environments
+Integrate code coverage requirements
+Set up automated security scanning
+Implement semantic versioning and release automation
+Add notification integrations (Slack, email)
+Explore advanced features like self-hosted runners
+Real-World Applications
+This pipeline pattern is used by organizations to:
+
+Deploy web applications automatically
+Validate infrastructure as code
+Run security and compliance checks
+Generate documentation automatically
+Manage microservices deployments
+Estimated Completion Time: 1-2 hour
