@@ -1,0 +1,71 @@
+name: Full CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install linting tools
+      run: |
+        # TODO: Install pylint or flake8
+        
+    - name: Run linter
+      run: |
+        # TODO: Run linting command
+        
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        # TODO: Install requirements
+        
+    - name: Run tests
+      run: |
+        # TODO: Run pytest
+        
+  build:
+    name: Build Artifact
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Create distribution
+      run: |
+        # TODO: Create a simple tar.gz of the project
+        
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: calculator-app
+        path: |
+          # TODO: Specify files to upload
