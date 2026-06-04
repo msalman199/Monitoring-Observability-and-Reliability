@@ -1,0 +1,389 @@
+Blue-Green Deployments
+Prerequisites
+Basic Linux command-line knowledge
+Understanding of web servers (Nginx)
+Familiarity with Docker containers
+Basic networking concepts (ports, localhost)
+Text editor skills (nano/vim)
+Learning Objectives
+By completing this lab, you will:
+
+Understand blue-green deployment strategy
+Implement zero-downtime deployments using Docker and Nginx
+Switch traffic between application versions seamlessly
+Verify deployment success without service interruption
+Environment Setup
+Al Nafi provides a bare-metal Linux machine. Click Start Lab to begin.
+
+Install Required Tools
+# Update package manager
+sudo apt update
+
+# Install Docker
+sudo apt install -y docker.io
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker $USER
+newgrp docker
+
+# Install Nginx
+sudo apt install -y nginx
+
+# Verify installations
+docker --version
+nginx -v
+Task 1: Deploy Blue and Green Environments
+Step 1: Create Application Versions
+Create two versions of a simple web application.
+
+Blue Version (v1.0):
+
+mkdir -p ~/blue-green-lab/blue
+cd ~/blue-green-lab/blue
+
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Blue Version</title></head>
+<body style="background-color: #4A90E2; color: white; text-align: center; padding: 50px;">
+    <h1>Application Version 1.0 - BLUE</h1>
+    <p>Current Environment: Production</p>
+    <p>Deployment Time: <!-- TODO: Add timestamp --></p>
+</body>
+</html>
+EOF
+Green Version (v2.0):
+
+mkdir -p ~/blue-green-lab/green
+cd ~/blue-green-lab/green
+
+cat > index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Green Version</title></head>
+<body style="background-color: #50C878; color: white; text-align: center; padding: 50px;">
+    <h1>Application Version 2.0 - GREEN</h1>
+    <p>Current Environment: Staging</p>
+    <p>New Features: Enhanced UI, Performance Improvements</p>
+</body>
+</html>
+EOF
+Step 2: Create Dockerfiles
+Blue Dockerfile:
+
+cd ~/blue-green-lab/blue
+
+cat > Dockerfile << 'EOF'
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 80
+EOF
+Green Dockerfile:
+
+cd ~/blue-green-lab/green
+
+cat > Dockerfile << 'EOF'
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+EXPOSE 80
+EOF
+Step 3: Build and Run Both Environments
+# Build Blue image
+cd ~/blue-green-lab/blue
+docker build -t app-blue:1.0 .
+
+# Build Green image
+cd ~/blue-green-lab/green
+docker build -t app-green:2.0 .
+
+# Run Blue container (production - port 8080)
+docker run -d --name blue-app -p 8080:80 app-blue:1.0
+
+# Run Green container (staging - port 8081)
+docker run -d --name green-app -p 8081:80 app-green:2.0
+
+# Verify both containers are running
+docker ps
+Step 4: Test Both Environments
+# Test Blue environment
+curl http://localhost:8080
+
+# Test Green environment
+curl http://localhost:8081
+Expected Output: You should see HTML content from both versions with different background colors mentioned.
+
+Task 2: Configure Traffic Switching with Nginx
+Step 1: Create Nginx Configuration Template
+cd ~/blue-green-lab
+
+cat > nginx-config-template.conf << 'EOF'
+upstream backend {
+    # TODO: Configure upstream server
+    # Syntax: server <host>:<port>;
+    server localhost:_____;
+}
+
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+Step 2: Implement Blue Configuration
+Complete the configuration to route traffic to Blue environment:
+
+cat > /tmp/blue-green-nginx.conf << 'EOF'
+upstream backend {
+    server localhost:8080;  # Blue environment
+}
+
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+EOF
+
+# Apply configuration
+sudo cp /tmp/blue-green-nginx.conf /etc/nginx/sites-available/blue-green
+sudo ln -sf /etc/nginx/sites-available/blue-green /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Test and reload
+sudo nginx -t
+sudo systemctl reload nginx
+Step 3: Verify Production Traffic
+# Check current production version
+curl http://localhost
+
+# Multiple requests to confirm consistency
+for i in {1..5}; do
+    curl -s http://localhost | grep -o "Version [0-9.]*"
+    sleep 1
+done
+Step 4: Create Deployment Switch Script
+Create a script to switch between environments:
+
+cat > ~/blue-green-lab/switch-deployment.sh << 'EOF'
+#!/bin/bash
+
+# Blue-Green Deployment Switcher
+# Usage: ./switch-deployment.sh [blue|green]
+
+ENVIRONMENT=$1
+
+if [ "$ENVIRONMENT" != "blue" ] && [ "$ENVIRONMENT" != "green" ]; then
+    echo "Usage: $0 [blue|green]"
+    exit 1
+fi
+
+# TODO: Set the correct port based on environment
+if [ "$ENVIRONMENT" == "blue" ]; then
+    PORT=____  # Blue port
+    VERSION="1.0"
+else
+    PORT=____  # Green port
+    VERSION="2.0"
+fi
+
+echo "Switching to $ENVIRONMENT environment (v$VERSION)..."
+
+# Generate new Nginx configuration
+cat > /tmp/blue-green-nginx.conf << NGINX_EOF
+upstream backend {
+    server localhost:$PORT;
+}
+
+server {
+    listen 80;
+    server_name localhost;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+    }
+
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}
+NGINX_EOF
+
+# Apply configuration
+sudo cp /tmp/blue-green-nginx.conf /etc/nginx/sites-available/blue-green
+
+# Test configuration
+if sudo nginx -t; then
+    sudo systemctl reload nginx
+    echo "Successfully switched to $ENVIRONMENT environment!"
+    echo "Verifying deployment..."
+    sleep 2
+    curl -s http://localhost | grep -o "Version [0-9.]*"
+else
+    echo "Configuration test failed. Rolling back..."
+    exit 1
+fi
+EOF
+
+chmod +x ~/blue-green-lab/switch-deployment.sh
+Complete the script by filling in the correct ports (8080 for blue, 8081 for green).
+
+Step 5: Perform Zero-Downtime Deployment
+Execute the deployment switch:
+
+cd ~/blue-green-lab
+
+# Current state: Blue is live
+echo "Current production version:"
+curl -s http://localhost | grep "Version"
+
+# Switch to Green (v2.0)
+./switch-deployment.sh green
+
+# Verify switch
+echo "After deployment:"
+curl -s http://localhost | grep "Version"
+
+# Test continuous availability during switch
+echo "Testing zero-downtime..."
+for i in {1..10}; do
+    curl -s http://localhost > /dev/null && echo "Request $i: Success" || echo "Request $i: Failed"
+done
+Step 6: Implement Rollback Capability
+Test rollback to previous version:
+
+# Rollback to Blue if issues found
+./switch-deployment.sh blue
+
+# Verify rollback
+curl -s http://localhost | grep "Version"
+Verification
+Verify Deployment Setup
+# 1. Check both containers are running
+docker ps | grep -E "blue-app|green-app"
+
+# 2. Verify Nginx is proxying correctly
+curl -I http://localhost
+
+# 3. Test health endpoint
+curl http://localhost/health
+
+# 4. Confirm current active environment
+curl -s http://localhost | grep -E "BLUE|GREEN"
+Test Complete Deployment Cycle
+# Full deployment cycle test
+cd ~/blue-green-lab
+
+echo "=== Starting Deployment Cycle Test ==="
+
+echo "1. Current version:"
+curl -s http://localhost | grep "Version"
+
+echo -e "\n2. Switching to Green..."
+./switch-deployment.sh green
+sleep 2
+
+echo -e "\n3. New version:"
+curl -s http://localhost | grep "Version"
+
+echo -e "\n4. Rolling back to Blue..."
+./switch-deployment.sh blue
+sleep 2
+
+echo -e "\n5. Rolled back version:"
+curl -s http://localhost | grep "Version"
+
+echo -e "\n=== Deployment Cycle Complete ==="
+Expected Results:
+
+Both containers show as running
+Nginx returns HTTP 200 status
+Health endpoint returns "healthy"
+Version switches between 1.0 and 2.0 without errors
+No failed requests during switching
+Troubleshooting Tips
+Issue: Nginx configuration test fails
+
+# Check syntax errors
+sudo nginx -t
+
+# View detailed error logs
+sudo tail -f /var/log/nginx/error.log
+Issue: Cannot access application
+
+# Verify containers are running
+docker ps -a
+
+# Check container logs
+docker logs blue-app
+docker logs green-app
+
+# Verify port bindings
+sudo netstat -tlnp | grep -E "8080|8081|80"
+Issue: Permission denied errors
+
+# Ensure user is in docker group
+groups $USER
+
+# If not, re-login or use:
+newgrp docker
+Conclusion
+You have successfully implemented a blue-green deployment strategy using Docker and Nginx. This approach enables:
+
+Zero-downtime deployments: Traffic switches instantly between versions
+Easy rollback: Revert to previous version in seconds
+Safe testing: New version runs in parallel before going live
+Production confidence: Test green environment before switching traffic
+Key Takeaways:
+
+Blue-green deployments maintain two identical production environments
+Load balancers/reverse proxies enable instant traffic switching
+This pattern is fundamental for continuous deployment pipelines
+The same principles apply to cloud platforms and container orchestration systems
+Next Steps:
+
+Explore canary deployments (gradual traffic shifting)
+Implement automated health checks before switching
+Integrate with CI/CD pipelines
+Study rolling deployments in Kubernetes
+Cleanup (Optional)
+# Stop and remove containers
+docker stop blue-app green-app
+docker rm blue-app green-app
+
+# Remove images
+docker rmi app-blue:1.0 app-green:2.0
+
+# Remove Nginx configuration
+sudo rm /etc/nginx/sites-enabled/blue-green
+sudo rm /etc/nginx/sites-available/blue-green
+sudo systemctl reload nginx
+
+# Remove lab directory
+rm -rf ~/blue-green-lab
