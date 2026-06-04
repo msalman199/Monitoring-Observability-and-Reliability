@@ -1,0 +1,392 @@
+: Terraform Infrastructure Provisioning
+Prerequisites
+Basic understanding of Linux command line
+Familiarity with YAML/JSON configuration syntax
+Understanding of infrastructure concepts (servers, networks, storage)
+Basic text editor skills (vim, nano, or VS Code)
+Learning Objectives
+By the end of this lab, you will be able to:
+
+Install and configure Terraform on a Linux system
+Write Terraform configuration files using HCL syntax
+Provision local infrastructure using Terraform providers
+Apply and manage infrastructure state
+Destroy provisioned resources safely
+Environment Setup
+Starting Your Lab Environment
+Click the Start Lab button to provision your Linux cloud machine
+Wait for the environment to be ready (approximately 2-3 minutes)
+Connect to your machine via SSH using the provided credentials
+Install Terraform
+# Update package manager
+sudo apt update
+
+# Install required dependencies
+sudo apt install -y wget unzip
+
+# Download Terraform (version 1.6.x)
+wget https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+
+# Unzip and install
+unzip terraform_1.6.6_linux_amd64.zip
+sudo mv terraform /usr/local/bin/
+
+# Verify installation
+terraform version
+Install Docker (Infrastructure Target)
+# Install Docker for local infrastructure provisioning
+sudo apt install -y docker.io
+
+# Start Docker service
+sudo systemctl start docker
+sudo systemctl enable docker
+
+# Add user to docker group
+sudo usermod -aG docker $USER
+
+# Apply group changes (or logout/login)
+newgrp docker
+
+# Verify Docker installation
+docker --version
+Task 1: Write Terraform Configuration
+Step 1: Create Project Directory
+# Create working directory
+mkdir -p ~/terraform-lab
+cd ~/terraform-lab
+
+# Create configuration files
+touch main.tf variables.tf outputs.tf
+Step 2: Configure Terraform Provider
+Create the provider configuration in main.tf:
+
+# TODO: Configure the Terraform required version and providers block
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+# TODO: Initialize the Docker provider
+provider "docker" {
+  # Provider connects to local Docker daemon
+}
+Step 3: Define Infrastructure Resources
+Add resource definitions to main.tf:
+
+# TODO: Create a Docker network resource
+resource "docker_network" "app_network" {
+  name = "terraform-network"
+  # Add driver configuration
+}
+
+# TODO: Define a Docker volume for persistent storage
+resource "docker_volume" "app_data" {
+  # Configure volume name using variable
+}
+
+# TODO: Create a Docker container resource for Nginx
+resource "docker_container" "web_server" {
+  # Configure image, name, and ports
+  # Attach to network and volume
+  # Set restart policy
+}
+
+# TODO: Create a second container for a simple application
+resource "docker_container" "app_server" {
+  # Use a different image (e.g., httpd, redis)
+  # Configure networking and dependencies
+}
+Step 4: Define Variables
+Edit variables.tf:
+
+# TODO: Define variable for volume name
+variable "volume_name" {
+  description = "Name of the Docker volume"
+  type        = string
+  default     = "app-data-volume"
+}
+
+# TODO: Define variable for web server port
+variable "web_port" {
+  # Set description, type, and default value
+}
+
+# TODO: Define variable for container restart policy
+variable "restart_policy" {
+  # Options: "no", "always", "on-failure", "unless-stopped"
+}
+Step 5: Define Outputs
+Edit outputs.tf:
+
+# TODO: Output the web server container ID
+output "web_container_id" {
+  # Reference the container resource
+}
+
+# TODO: Output the network name
+output "network_name" {
+  # Display the created network name
+}
+
+# TODO: Output the access URL
+output "web_url" {
+  # Construct URL using localhost and port variable
+}
+Complete Configuration Example Structure
+Your main.tf should follow this pattern:
+
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.0"
+    }
+  }
+}
+
+provider "docker" {}
+
+resource "docker_network" "app_network" {
+  name   = "terraform-network"
+  driver = "bridge"
+}
+
+resource "docker_volume" "app_data" {
+  name = var.volume_name
+}
+
+resource "docker_image" "nginx" {
+  name = "nginx:latest"
+}
+
+resource "docker_container" "web_server" {
+  name  = "terraform-nginx"
+  image = docker_image.nginx.image_id
+  
+  ports {
+    internal = 80
+    external = var.web_port
+  }
+  
+  networks_advanced {
+    name = docker_network.app_network.name
+  }
+  
+  volumes {
+    volume_name    = docker_volume.app_data.name
+    container_path = "/usr/share/nginx/html"
+  }
+  
+  restart = var.restart_policy
+}
+Task 2: Apply Terraform Plan
+Step 1: Initialize Terraform
+# Initialize Terraform working directory
+terraform init
+
+# Expected output: Provider plugins downloaded
+What happens during init:
+
+Downloads required provider plugins
+Creates .terraform directory
+Initializes backend for state storage
+Step 2: Validate Configuration
+# Check configuration syntax
+terraform validate
+
+# Format configuration files
+terraform fmt
+
+# Review formatted files
+cat main.tf
+Step 3: Create Execution Plan
+# Generate and review execution plan
+terraform plan
+
+# Save plan to file for review
+terraform plan -out=tfplan
+
+# Examine the plan details
+terraform show tfplan
+Review the plan output:
+
+Resources to be created (green +)
+Resources to be modified (yellow ~)
+Resources to be destroyed (red -)
+Step 4: Apply Configuration
+# Apply the configuration
+terraform apply
+
+# Or apply saved plan
+terraform apply tfplan
+
+# Type 'yes' when prompted to confirm
+Monitor the apply process:
+
+Watch resource creation order
+Note any dependencies being resolved
+Verify successful completion message
+Step 5: Verify Infrastructure
+# Check Terraform state
+terraform state list
+
+# View specific resource details
+terraform state show docker_container.web_server
+
+# Verify Docker resources
+docker ps
+docker network ls
+docker volume ls
+
+# Test web server access
+curl http://localhost:8080
+Step 6: Inspect Outputs
+# Display all outputs
+terraform output
+
+# Display specific output
+terraform output web_url
+
+# Output in JSON format
+terraform output -json
+Step 7: Modify Infrastructure
+Create a terraform.tfvars file to customize variables:
+
+# TODO: Set custom values for variables
+volume_name    = "my-custom-volume"
+web_port       = 8080
+restart_policy = "unless-stopped"
+Apply changes:
+
+# Plan with new variables
+terraform plan -var-file="terraform.tfvars"
+
+# Apply changes
+terraform apply -var-file="terraform.tfvars"
+Step 8: Manage State
+# List all resources in state
+terraform state list
+
+# Show state file location
+ls -la terraform.tfstate
+
+# View state in readable format
+terraform show
+
+# Refresh state from actual infrastructure
+terraform refresh
+Step 9: Destroy Infrastructure
+# Preview destruction plan
+terraform plan -destroy
+
+# Destroy all managed infrastructure
+terraform destroy
+
+# Type 'yes' to confirm
+
+# Verify cleanup
+docker ps -a
+docker network ls
+docker volume ls
+Verification
+Configuration Verification Checklist
+ Terraform version 1.6.x installed
+ Docker service running
+ Project directory contains: main.tf, variables.tf, outputs.tf
+ Configuration files properly formatted (terraform fmt)
+ Configuration validated without errors (terraform validate)
+Infrastructure Verification Checklist
+ terraform init completed successfully
+ Execution plan shows expected resources
+ terraform apply completed without errors
+ State file created (terraform.tfstate)
+ Docker containers running (docker ps)
+ Docker network created
+ Docker volume created
+ Web server accessible via curl
+ Outputs display correct information
+ Resources destroyed cleanly (terraform destroy)
+Verification Commands
+# Verify Terraform state
+terraform state list | wc -l  # Should show number of resources
+
+# Verify Docker resources
+docker ps --filter "name=terraform" --format "{{.Names}}"
+
+# Check network connectivity
+docker network inspect terraform-network
+
+# Verify volume
+docker volume inspect app-data-volume
+
+# Test application
+curl -I http://localhost:8080
+Troubleshooting Tips
+Common Issues and Solutions
+Issue: Terraform init fails
+
+# Clear cache and retry
+rm -rf .terraform .terraform.lock.hcl
+terraform init
+Issue: Docker permission denied
+
+# Ensure user in docker group
+sudo usermod -aG docker $USER
+newgrp docker
+Issue: Port already in use
+
+# Check port usage
+sudo netstat -tulpn | grep :8080
+
+# Change port in variables or kill conflicting process
+Issue: State lock error
+
+# Remove lock file (only if no other terraform process running)
+rm -f .terraform.tfstate.lock.info
+Issue: Resource already exists
+
+# Import existing resource
+terraform import docker_container.web_server <container_id>
+
+# Or remove conflicting resource
+docker rm -f <container_name>
+Conclusion
+What You Accomplished
+In this lab, you successfully:
+
+Installed and configured Terraform on Linux
+Wrote infrastructure-as-code using HCL syntax
+Defined providers, resources, variables, and outputs
+Applied Terraform plans to provision Docker infrastructure
+Managed infrastructure state and lifecycle
+Destroyed resources cleanly using Terraform
+Key Concepts Learned
+Infrastructure as Code (IaC): Defining infrastructure using declarative configuration
+Terraform Workflow: init → plan → apply → destroy
+State Management: Tracking infrastructure state in terraform.tfstate
+Resource Dependencies: Terraform automatically resolves resource relationships
+Idempotency: Running apply multiple times produces same result
+Real-World Significance
+Terraform is widely used in production environments to:
+
+Provision cloud infrastructure (AWS, Azure, GCP)
+Manage Kubernetes clusters and resources
+Configure networking and security policies
+Maintain consistent environments across dev/staging/production
+Enable version control for infrastructure changes
+Facilitate disaster recovery and infrastructure replication
+Next Steps
+To continue your Terraform journey:
+
+Explore remote state backends (S3, Terraform Cloud)
+Learn about Terraform modules for code reusability
+Practice with cloud providers (AWS, Azure, GCP)
+Implement CI/CD pipelines with Terraform
+Study advanced features: workspaces, provisioners, data sources
+Lab Complete! You now have foundational Terraform skills for infrastructure provisioning.
