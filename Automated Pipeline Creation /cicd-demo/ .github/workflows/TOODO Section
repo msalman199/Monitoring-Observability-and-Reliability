@@ -1,0 +1,27 @@
+lint:
+    - name: Install linting tools
+      run: |
+        pip install flake8
+        
+    - name: Run linter
+      run: |
+        flake8 calculator.py --max-line-length=100
+
+  test:
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Run tests
+      run: |
+        pytest test_calculator.py -v
+
+  build:
+    - name: Create distribution
+      run: |
+        tar -czf calculator-app.tar.gz calculator.py requirements.txt
+        
+    - name: Upload artifact
+      with:
+        path: calculator-app.tar.gz
