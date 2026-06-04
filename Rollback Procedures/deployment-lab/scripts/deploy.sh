@@ -73,3 +73,27 @@ esac
     sudo systemctl restart nginx
     
     echo "Deployment completed for $version"
+    rollback() {
+    echo "Initiating rollback procedure..."
+    
+    # Find most recent backup
+    LATEST_BACKUP=$(ls -t "$BACKUP_DIR" | head -1)
+    
+    if [ -z "$LATEST_BACKUP" ]; then
+        echo "Error: No backups found"
+        exit 1
+    fi
+    
+    echo "Rolling back to: $LATEST_BACKUP"
+    
+    # TODO: Remove current deployment
+    # Hint: sudo rm -rf "$DEPLOY_DIR"/*
+    
+    # TODO: Restore from backup
+    # Hint: sudo cp -r "$BACKUP_DIR/$LATEST_BACKUP"/* "$DEPLOY_DIR"/
+    
+    # TODO: Restart nginx
+    # Hint: sudo systemctl restart nginx
+    
+    echo "Rollback completed successfully"
+}
