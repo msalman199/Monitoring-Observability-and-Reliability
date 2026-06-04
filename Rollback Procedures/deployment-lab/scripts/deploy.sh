@@ -52,3 +52,24 @@ case "$1" in
         echo "Usage: $0 {deploy|rollback|verify} [version]"
         exit 1
 esac
+# Add after the deploy() function declaration:
+
+    # Create backup with timestamp
+    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+    BACKUP_NAME="backup_${TIMESTAMP}"
+    
+    if [ -d "$DEPLOY_DIR" ]; then
+        sudo mkdir -p "$BACKUP_DIR"
+        sudo cp -r "$DEPLOY_DIR" "$BACKUP_DIR/$BACKUP_NAME"
+        echo "Backup created: $BACKUP_NAME"
+    fi
+    
+    # Checkout specified version
+    cd "$APP_DIR"
+    git checkout "$version"
+    
+    # Deploy to web server
+    sudo cp -r * "$DEPLOY_DIR/"
+    sudo systemctl restart nginx
+    
+    echo "Deployment completed for $version"
